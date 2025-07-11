@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Cámara</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-result {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        
+        button {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            margin: 10px 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #0056CC;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        video {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        #log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .step {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnóstico de Cámara para AR</h1>
+        <p>Vamos a verificar paso a paso qué está causando el problema.</p>
+        
+        <div class="step">
+            <h3>Paso 1: Información del Sistema</h3>
+            <div id="systemInfo"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Paso 2: Test de Cámara Básica</h3>
+            <button onclick="testBasicCamera()">🎥 Probar Cámara</button>
+            <div id="cameraResult"></div>
+            <video id="videoElement" style="display: none;" autoplay playsinline></video>
+        </div>
+        
+        <div class="step">
+            <h3>Paso 3: Test de HTTPS</h3>
+            <div id="httpsResult"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Paso 4: Test de WebGL</h3>
+            <button onclick="testWebGL()">🎮 Probar WebGL</button>
+            <div id="webglResult"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Paso 5: Recomendaciones</h3>
+            <div id="recommendations"></div>
+        </div>
+        
+        <h3>📋 Log de Diagnóstico</h3>
+        <div id="log"></div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="downloadReport()">📄 Descargar Reporte</button>
+            <button onclick="location.reload()">🔄 Reiniciar Test</button>
+        </div>
+    </div>
+
+    <script>
+        let logData = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            logData.push(logEntry);
+            
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `<div>${logEntry}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            console.log(message);
+        }
+        
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+        }
+        
+        // Paso 1: Información del Sistema
+        function gatherSystemInfo() {
+            const info = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                protocol: location.protocol,
+                hostname: location.hostname,
+                port: location.port,
+                pathname: location.pathname,
+                screen: `${screen.width}x${screen.height}`,
+                viewport: `${window.innerWidth}x${window.innerHeight}`,
+                devicePixelRatio: window.devicePixelRatio
+            };
+            
+            log('Sistema detectado: ' + navigator.userAgent);
+            log('Protocolo: ' + location.protocol);
+            log('Host: ' + location.hostname);
+            
+            let infoHtml = '<div class="info"><strong>Información del Sistema:</strong><br>';
+            Object.entries(info).forEach(([key, value]) => {
+                infoHtml += `<strong>${key}:</strong> ${value}<br>`;
+            });
+            infoHtml += '</div>';
+            
+            document.getElementById('systemInfo').innerHTML = infoHtml;
+            
+            // Verificar HTTPS
+            checkHTTPS();
+        }
+        
+        // Paso 2: Test de Cámara
+        function testBasicCamera() {
+            log('Iniciando test de cámara...');
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showResult('cameraResult', '❌ getUserMedia no está disponible en este navegador', 'error');
+                log('ERROR: getUserMedia no disponible');
+                return;
+            }
+            
+            log('getUserMedia disponible, solicitando permisos...');
+            
+            const constraints = {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 }
+                }
+            };
+            
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(stream => {
+                    log('✅ Cámara accesible');
+                    showResult('cameraResult', '✅ Cámara funciona correctamente', 'success');
+                    
+                    const video = document.getElementById('videoElement');
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        stream.getTracks().forEach(track => track.stop());
+                        video.style.display = 'none';
+                        log('Cámara desactivada');
+                    }, 5000);
+                })
+                .catch(error => {
+                    log('❌ Error de cámara: ' + error.name + ' - ' + error.message);
+                    
+                    let errorMsg = '';
+                    let solution = '';
+                    
+                    switch(error.name) {
+                        case 'NotAllowedError':
+                            errorMsg = 'Permisos de cámara denegados';
+                            solution = 'Ve a Configuración → Safari → Permisos de sitios web → Cámara';
+                            break;
+                        case 'NotFoundError':
+                            errorMsg = 'No se encontró cámara';
+                            solution = 'Verifica que tu dispositivo tenga cámara';
+                            break;
+                        case 'NotSupportedError':
+                            errorMsg = 'Cámara no soportada (necesita HTTPS)';
+                            solution = 'Usa HTTPS o localhost';
+                            break;
+                        case 'TypeError':
+                            errorMsg = 'Error de protocolo (necesita HTTPS)';
+                            solution = 'Accede vía HTTPS';
+                            break;
+                        default:
+                            errorMsg = `Error desconocido: ${error.message}`;
+                            solution = 'Intenta con otro navegador';
+                    }
+                    
+                    showResult('cameraResult', `❌ ${errorMsg}<br><strong>Solución:</strong> ${solution}`, 'error');
+                });
+        }
+        
+        // Paso 3: Verificar HTTPS
+        function checkHTTPS() {
+            const isHTTPS = location.protocol === 'https:';
+            const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            
+            if (isHTTPS) {
+                showResult('httpsResult', '✅ HTTPS activo - Cámara permitida', 'success');
+                log('✅ HTTPS detectado');
+            } else if (isLocalhost) {
+                showResult('httpsResult', '⚠️ HTTP en localhost - Puede funcionar', 'warning');
+                log('⚠️ HTTP en localhost');
+            } else {
+                showResult('httpsResult', '❌ HTTP detectado - Cámara bloqueada por seguridad', 'error');
+                log('❌ HTTP en host remoto - cámara bloqueada');
+            }
+        }
+        
+        // Paso 4: Test de WebGL
+        function testWebGL() {
+            log('Probando WebGL...');
+            
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                
+                if (gl) {
+                    const renderer = gl.getParameter(gl.RENDERER);
+                    const vendor = gl.getParameter(gl.VENDOR);
+                    showResult('webglResult', `✅ WebGL disponible<br><strong>Renderer:</strong> ${renderer}<br><strong>Vendor:</strong> ${vendor}`, 'success');
+                    log('✅ WebGL disponible: ' + renderer);
+                } else {
+                    showResult('webglResult', '❌ WebGL no disponible', 'error');
+                    log('❌ WebGL no disponible');
+                }
+            } catch (e) {
+                showResult('webglResult', '❌ Error al probar WebGL: ' + e.message, 'error');
+                log('❌ Error WebGL: ' + e.message);
+            }
+        }
+        
+        // Paso 5: Generar recomendaciones
+        function generateRecommendations() {
+            const isHTTPS = location.protocol === 'https:';
+            const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            
+            let recommendations = '<div class="info"><strong>📋 Recomendaciones basadas en tu sistema:</strong><br><br>';
+            
+            if (!isHTTPS && !isLocalhost) {
+                recommendations += `
+                    <div class="error">
+                        <strong>🚨 PROBLEMA PRINCIPAL: HTTP detectado</strong><br>
+                        Los navegadores modernos requieren HTTPS para acceder a la cámara.<br><br>
+                        <strong>Soluciones:</strong><br>
+                        1. <strong>GitHub Pages (Recomendado):</strong> Sube tu archivo a GitHub y activa Pages<br>
+                        2. <strong>Netlify:</strong> Arrastra tu archivo a netlify.com<br>
+                        3. <strong>ngrok:</strong> Instala ngrok y ejecuta <code>ngrok http 5500</code><br>
+                        4. <strong>Servidor local HTTPS:</strong> <code>http-server -S -p 8080</code>
+                    </div><br>
+                `;
+            }
+            
+            if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+                recommendations += `
+                    <div class="warning">
+                        <strong>📱 iOS detectado - Configuraciones especiales:</strong><br>
+                        • Ve a Configuración → Safari → Avanzado → Características experimentales<br>
+                        • Habilita "WebXR Device API"<br>
+                        • Asegúrate de que "Bloquear ventanas emergentes" esté desactivado
+                    </div><br>
+                `;
+            }
+            
+            recommendations += `
+                <div class="success">
+                    <strong>✅ Próximos pasos recomendados:</strong><br>
+                    1. Implementa HTTPS (ver opciones arriba)<br>
+                    2. Descarga el marcador Hiro desde: <a href="https://ar-js-org.github.io/AR.js/data/images/hiro.png" target="_blank">aquí</a><br>
+                    3. Usa Chrome o Firefox para mejor compatibilidad<br>
+                    4. Asegúrate de tener buena iluminación al probar
+                </div>
+            `;
+            
+            recommendations += '</div>';
+            
+            document.getElementById('recommendations').innerHTML = recommendations;
+        }
+        
+        function downloadReport() {
+            const report = logData.join('\n');
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ar-diagnostic-report.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Inicialización
+        window.addEventListener('load', function() {
+            log('Iniciando diagnóstico completo...');
+            gatherSystemInfo();
+            generateRecommendations();
+        });
+    </script>
+</body>
+</html>
